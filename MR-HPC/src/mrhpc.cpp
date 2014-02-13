@@ -14,7 +14,7 @@ void Mapper::initialize(int rNodeNumber, int *rNodeList){
 void Mapper::Emit(const string &key, const string &value){
 	unsigned long long int hash = LIB::getHash(key);
 	string keyValue = key + TAG::SPLIT + value;
-	MPI::COMM_WORLD.Send(keyValue.c_str(), keyValue.size(), MPI::CHAR, *(this->rNodeList + hash%this->rNodeNumber), TAG::MAP_SEND);
+	MPI::COMM_WORLD.Send(keyValue.c_str(), (keyValue.size() + 1), MPI::CHAR, *(this->rNodeList + hash%this->rNodeNumber), TAG::MAP_SEND);
 }
 
 void Mapper::End(){
@@ -171,12 +171,12 @@ void MR_JOB::startJob(){
 
 			this->map->wait();
 			readData();
-			std::cout << "Mapper " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
+			//std::cout << "Mapper " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
 			this->map->End();
 		}
 	}else{
 		this->reduce->wait();
-		std::cout << "Reducer " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
+		//std::cout << "Reducer " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
 	}
 }
 

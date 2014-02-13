@@ -7,6 +7,11 @@
 
 #include "mrhpc.h"
 
+// Example of PageRank computation
+
+/**
+ * Mapper class
+ */
 class PR_MAP: public Mapper {
 public:
 	virtual void Map(const string &key, const string &value){
@@ -33,6 +38,9 @@ public:
 	}
 };
 
+/**
+ * Reducer class
+ */
 class PR_REDUCE: public Reducer{
 public:
 	virtual void Reduce(const string &key, vector<string> value){
@@ -58,7 +66,7 @@ int main(int argc, char *argv[]) {
 	PR_REDUCE reduce;
 	pr.setR_Task(reduce);
 
-	// Set input data: text file and put (filename, each line) --> Mapper
+	// Set input data: text file and put (filename, each line) --> Mapper input
 	pr.setInputFormat("*.txt");
 
 	// Start job
