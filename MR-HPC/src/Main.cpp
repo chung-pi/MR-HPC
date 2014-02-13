@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 	MPI::Init(argc, argv);
 
 	// Set number of mapper and reducer
-	MR_JOB pr (1, 1);
+	MR_JOB pr (4, 4);
 
 	// Set mapper and reducer functions
 	PR_MAP map;
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 	pr.setR_Task(reduce);
 
 	// Set input data: text file and put (filename, each line) --> Mapper
-	pr.setInputFormat("dense.txt");
+	pr.setInputFormat("*.txt");
 
 	// Start job
 	pr.startJob();

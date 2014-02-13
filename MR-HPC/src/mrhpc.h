@@ -89,6 +89,7 @@ public:
 	static bool fileExist(const std::string name);
 	static int getDir(string dir, vector<string> &files);
 	static int wildCMP(const char *wild, const char *string);
+	static void trim(string& str);
 };
 
 #endif /* MRHPC_H_ */

@@ -19,8 +19,8 @@ void Mapper::Emit(const string &key, const string &value){
 
 void Mapper::End(){
 	for (int i=0; i < this->rNodeNumber; i++){
-		char value = TAG::EXIT;
-		MPI::COMM_WORLD.Send(&value, 1, MPI::CHAR, *(this->rNodeList + i), TAG::MAP_SEND);
+		char data = TAG::EXIT;
+		MPI::COMM_WORLD.Send(&data, 1, MPI::CHAR, *(this->rNodeList + i), TAG::MAP_SEND);
 	}
 }
 
@@ -32,18 +32,17 @@ void Reducer::wait(){
 	int count = 0;
 	ReduceInput list(rand());
 	for(;;){
-		char *data = new char[MR::MAX_DATA_IN_MSG];
 		MPI::Status status;
+		char *data = new char[MR::MAX_DATA_IN_MSG];
 		MPI::COMM_WORLD.Recv(data, MR::MAX_DATA_IN_MSG, MPI::CHAR, MPI::ANY_SOURCE, TAG::REDUCE_RECV, status);
 		if (status.Get_count(MPI::CHAR) == 1 && data[0] == TAG::EXIT){
 			count++;
-			std::cout << MPI::COMM_WORLD.Get_rank() << ": Finish" << count << "\n";
 		}else{
 			// split[0] => Key, split[1] => Value
 			std::vector<std::string> split = LIB::split(data, TAG::SPLIT);
 
 			// Out of core buffer implementation here
-			//list.addKeyValue(split[0], split[1]);
+			list.addKeyValue(split[0], split[1]);
 		}
 		if (count == this->mNodeNumber){
 			break;
@@ -51,21 +50,25 @@ void Reducer::wait(){
 	}
 
 	// Forward (key, value) to Reducer
-	/*
 	vector<string> listKey = list.getListKey();
 	for (int i=0; i < listKey.size(); i++){
 		this->Reduce(listKey[i], list.getKeyValue(listKey[i]));
 	}
-	*/
+
+	/*
 	vector<string> listKey;
 	listKey.push_back("3");
 	this->Reduce("3", listKey);
+	*/
 }
 
 void Mapper::wait(){
-	char *data = new char[MR::MAX_DATA_IN_MSG];
+	int length;
 	MPI::Status status;
-	MPI::COMM_WORLD.Recv(data, MR::MAX_DATA_IN_MSG, MPI::CHAR, MPI::ANY_SOURCE, TAG::REDUCE_RECV, status);
+	MPI::COMM_WORLD.Recv(&length, 1, MPI::INT, MPI::ANY_SOURCE, TAG::REDUCE_RECV, status);
+
+	char *data = new char[length];
+	MPI::COMM_WORLD.Recv(data, length, MPI::CHAR, MPI::ANY_SOURCE, TAG::REDUCE_RECV, status);
 	this->listInput = LIB::split(data, TAG::SPLIT);
 }
 
@@ -112,13 +115,11 @@ void MR_JOB::readData(){
 	for (int i = 0; i < listFile.size(); i++) {
 		ifstream file(listFile[i].c_str());
 		int count = 0;
-		if (file.is_open()) {
-			string line;
-			while (getline(file, line)) {
-				this->map->Map(listFile[i], line);
-				count++;
-				std::cout << MPI::COMM_WORLD.Get_rank() << ": Sending " << count << "\n";
-			}
+		string line;
+		while (getline(file, line)) {
+			this->map->Map(listFile[i], line);
+			count++;
+			//std::cout << "Mapper " << MPI::COMM_WORLD.Get_rank() << ": " << listFile[i] << " " << count << "\n";
 		}
 		file.close();
 	}
@@ -142,11 +143,18 @@ void MR_JOB::splitData(){
 
 	// Send input data to each Mapper
 	for (int i=0; i < this->mNodeNumber; i++){
-		string data = listInput[i][0];
-		for (int j=1; j < listInput[i].size(); j++){
-			data = data + TAG::SPLIT + listInput[i][j];
+		string data;
+		if (listInput[i].size() > 0) {
+			data = listInput[i][0];
+			for (int j = 1; j < listInput[i].size(); j++) {
+				data = data + TAG::SPLIT + listInput[i][j];
+			}
 		}
-		MPI::COMM_WORLD.Send(data.c_str(), data.size(), MPI::CHAR, (this->rNodeNumber + i), TAG::MAP_SEND);
+		int length = data.size() + 1;
+		MPI::COMM_WORLD.Send(&length, 1, MPI::INT,
+				(this->rNodeNumber + i), TAG::MAP_SEND);
+		MPI::COMM_WORLD.Send(data.c_str(), length, MPI::CHAR,
+				(this->rNodeNumber + i), TAG::MAP_SEND);
 	}
 }
 
@@ -156,18 +164,19 @@ void MR_JOB::startJob(){
 	}
 	int rank = MPI::COMM_WORLD.Get_rank();
 	if (rank >= this->rNodeNumber){
-		if (rank < this->rNodeNumber + this->mNodeNumber){
+		if (rank < (this->rNodeNumber + this->mNodeNumber)){
 			if (rank == this->rNodeNumber){
 				splitData();
 			}
 
 			this->map->wait();
 			readData();
-			std::cout << MPI::COMM_WORLD.Get_rank() << ": Send OK" << "\n";
+			std::cout << "Mapper " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
 			this->map->End();
 		}
 	}else{
 		this->reduce->wait();
+		std::cout << "Reducer " << MPI::COMM_WORLD.Get_rank() << ": Done" << "\n";
 	}
 }
 
@@ -180,6 +189,17 @@ unsigned long long int LIB::getHash(const string str){
     for(size_t i = 0; i < str.length(); ++i)
         hash = 65599 * hash + str[i];
     return hash;
+}
+
+void LIB::trim(string& str){
+	string::size_type pos = str.find_last_not_of(' ');
+	if (pos != string::npos) {
+		str.erase(pos + 1);
+		pos = str.find_first_not_of(' ');
+		if (pos != string::npos)
+			str.erase(0, pos);
+	} else
+		str.erase(str.begin(), str.end());
 }
 
 std::vector<std::string> &LIB::split(const std::string &s, char delim, std::vector<std::string> &elems) {
