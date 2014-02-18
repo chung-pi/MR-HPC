@@ -69,6 +69,9 @@ int main(int argc, char *argv[]) {
 	// Set input data: text file and put (filename, each line) --> Mapper input
 	pr.setInputFormat("*.txt");
 
+	// Set temporary path
+	pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+
 	// Start job
 	pr.startJob();
 

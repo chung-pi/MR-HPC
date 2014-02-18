@@ -24,13 +24,14 @@ void Mapper::End(){
 	}
 }
 
-void Reducer::initialize(int mNodeNumber){
+void Reducer::initialize(int mNodeNumber, string tmpDir){
 	this->mNodeNumber = mNodeNumber;
+	this->tmpDir = tmpDir;
 }
 
 void Reducer::wait(){
 	int count = 0;
-	ReduceInput list(rand());
+	ReduceInput list(rand(), this->tmpDir);
 	for(;;){
 		MPI::Status status;
 		char *data = new char[MR::MAX_DATA_IN_MSG];
@@ -85,6 +86,9 @@ MR_JOB::MR_JOB(int mNodeNumber, int rNodeNumber){
 	for (int i=0; i < this->rNodeNumber; i++){
 		rNodeList[i] = i;
 	}
+
+	// Set temporary directory
+	this->tmpDir = "";
 }
 
 void MR_JOB::setM_Task(Mapper &m){
@@ -104,7 +108,7 @@ int MR_JOB::initialize(){
 	}
 
 	this->map->initialize(this->rNodeNumber, rNodeList);
-	this->reduce->initialize(this->mNodeNumber);
+	this->reduce->initialize(this->mNodeNumber, this->tmpDir);
 
 	return 1;
 }
@@ -182,6 +186,10 @@ void MR_JOB::startJob(){
 
 void MR_JOB::setInputFormat(const string &format){
 	this->inputFormat = format;
+}
+
+void MR_JOB::setTmpDir(const string &dir){
+	this->tmpDir = dir;
 }
 
 unsigned long long int LIB::getHash(const string str){
@@ -282,12 +290,13 @@ int LIB::wildCMP(const char *wild, const char *string) {
 	return !*wild;
 }
 
-ReduceInput::ReduceInput(int jobID){
+ReduceInput::ReduceInput(int jobID, string tmpDir){
 	this->jobID = jobID;
+	this->tmpDir = tmpDir;
 }
 
 void ReduceInput::addKeyValue(const string &key, const string &value){
-	string fileName = LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	string fileName = this->tmpDir + "/" +LIB::convertInt(this->jobID) + TAG::SPLIT + key;
 	if (LIB::fileExist(fileName)){
 		ofstream file(fileName.c_str(), ios::app);
 		file << value << "\n";
@@ -301,7 +310,7 @@ void ReduceInput::addKeyValue(const string &key, const string &value){
 }
 
 vector<string> ReduceInput::getKeyValue(const string &key){
-	string fileName = LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	string fileName = this->tmpDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
 	vector<string> listValue;
 	ifstream file(fileName.c_str());
 	if (file.is_open()){

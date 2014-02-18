@@ -41,9 +41,10 @@ public:
 class ReduceInput{
 	vector<string> listKey;
 	int jobID;
+	string tmpDir;
 
 public:
-	ReduceInput(int jobID);
+	ReduceInput(int jobID, string tmpDir);
 	void addKeyValue(const string &key, const string &value);
 	vector<string> getKeyValue(const string &key);
 	virtual ~ReduceInput(){};
@@ -52,10 +53,12 @@ public:
 
 class Reducer{
 	int mNodeNumber;
+	string tmpDir;
+
 public:
 	virtual ~Reducer(){};
 	virtual void Reduce(const string &key, vector<string> value) = 0;
-	void initialize(int);
+	void initialize(int, string);
 	void wait();
 
 	virtual void Emit(const string &value){};
@@ -68,6 +71,7 @@ class MR_JOB{
 	Mapper *map;
 	Reducer *reduce;
 	string inputFormat;
+	string tmpDir;
 public:
 	MR_JOB(int mNodeNumber, int rNodeNumber);
 	virtual ~MR_JOB(){};
@@ -78,6 +82,7 @@ public:
 	void setInputFormat(const string &format);
 	void readData();
 	void splitData();
+	void setTmpDir(const string &dir);
 };
 
 class LIB{
