@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 	MPI::Init(argc, argv);
 
 	// Set number of mapper and reducer
-	MR_JOB pr (4, 4);
+	MR_JOB pr (10, 10);
 
 	// Set mapper and reducer functions
 	PR_MAP map;
@@ -67,10 +67,12 @@ int main(int argc, char *argv[]) {
 	pr.setR_Task(reduce);
 
 	// Set input data: text file and put (filename, each line) --> Mapper input
+	pr.setInputDir(getenv("PJM_SCRATCHDIR"));
 	pr.setInputFormat("*.txt");
+	//pr.setCopyDataToTmp(true);
 
 	// Set temporary path
-	pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+	//pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
 
 	// Start job
 	pr.startJob();

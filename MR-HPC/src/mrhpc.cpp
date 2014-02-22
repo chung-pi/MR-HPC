@@ -24,14 +24,15 @@ void Mapper::End(){
 	}
 }
 
-void Reducer::initialize(int mNodeNumber, string tmpDir){
+void Reducer::initialize(int mNodeNumber, string inputDir, string tmpDir){
 	this->mNodeNumber = mNodeNumber;
+	this->inputDir = inputDir;
 	this->tmpDir = tmpDir;
 }
 
 void Reducer::wait(){
 	int count = 0;
-	ReduceInput list(rand(), this->tmpDir);
+	ReduceInput list(rand(), this->inputDir, this->tmpDir);
 	for(;;){
 		MPI::Status status;
 		char *data = new char[MR::MAX_DATA_IN_MSG];
@@ -89,6 +90,9 @@ MR_JOB::MR_JOB(int mNodeNumber, int rNodeNumber){
 
 	// Set temporary directory
 	this->tmpDir = "";
+	this->inputDir = ".";
+	this->inputFormat = "*.txt";
+	this->copyData = false;
 }
 
 void MR_JOB::setM_Task(Mapper &m){
@@ -108,16 +112,24 @@ int MR_JOB::initialize(){
 	}
 
 	this->map->initialize(this->rNodeNumber, rNodeList);
-	this->reduce->initialize(this->mNodeNumber, this->tmpDir);
+	this->reduce->initialize(this->mNodeNumber, this->inputDir, this->tmpDir);
 
 	return 1;
 }
 
 void MR_JOB::readData(){
 	vector<string> listFile = this->map->getListInput();
+	std::cout << "Size Before" << listFile.size() << "\n";
+	if (this->copyData){
+		copyDataToTmp(listFile);
+	}
 
 	for (int i = 0; i < listFile.size(); i++) {
-		ifstream file(listFile[i].c_str());
+		string path = this->inputDir + "/" + listFile[i];
+		if (this->copyData){
+			path = this->tmpDir + "/" + listFile[i];
+		}
+		ifstream file(path.c_str());
 		int count = 0;
 		string line;
 		while (getline(file, line)) {
@@ -135,7 +147,13 @@ void MR_JOB::splitData(){
 	vector<string> listInput[MR::MAX_MAPPER];
 	int index = 0;
 
-	int get = LIB::getDir(".", listFile);
+	int get;
+	if (!this->copyData){
+		get = LIB::getDir(this->inputDir, listFile);
+	}else{
+		get = LIB::getDir(this->tmpDir, listFile);
+	}
+
 	if (get == 0){
 		for (int i=0; i < listFile.size(); i++){
 			if (LIB::wildCMP(this->inputFormat.c_str(), listFile[i].c_str())){
@@ -188,8 +206,32 @@ void MR_JOB::setInputFormat(const string &format){
 	this->inputFormat = format;
 }
 
+void MR_JOB::setInputDir(const string &dir){
+	this->inputDir = dir;
+}
+
 void MR_JOB::setTmpDir(const string &dir){
 	this->tmpDir = dir;
+}
+
+void MR_JOB::setCopyDataToTmp(bool set){
+	this->copyData = set;
+}
+
+void MR_JOB::copyDataToTmp(vector<string> listFile){
+	std::cout << "Size " << listFile.size() << "\n";
+	for (int i = 0; i < listFile.size(); i++) {
+		std::cout << "Copy " << this->inputDir + "/" + listFile[i] << "\n";
+		string input = this->inputDir + "/" + listFile[i];
+		string output = this->tmpDir + "/" + listFile[i];
+		ifstream ifs(input.c_str(), std::ios::binary);
+		ofstream ofs(output.c_str(), std::ios::binary);
+		ofs << ifs.rdbuf();
+		ifs.close();
+		ofs.close();
+
+		std::cout << "Copy " << this->inputDir + "/" + listFile[i] << " OK\n";
+	}
 }
 
 unsigned long long int LIB::getHash(const string str){
@@ -290,13 +332,19 @@ int LIB::wildCMP(const char *wild, const char *string) {
 	return !*wild;
 }
 
-ReduceInput::ReduceInput(int jobID, string tmpDir){
+ReduceInput::ReduceInput(int jobID, string inputDir, string tmpDir){
 	this->jobID = jobID;
+	this->inputDir = inputDir;
 	this->tmpDir = tmpDir;
 }
 
 void ReduceInput::addKeyValue(const string &key, const string &value){
-	string fileName = this->tmpDir + "/" +LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	string fileName;
+	if (this->tmpDir.empty()){
+		fileName = this->inputDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	}else{
+		fileName = this->tmpDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	}
 	if (LIB::fileExist(fileName)){
 		ofstream file(fileName.c_str(), ios::app);
 		file << value << "\n";
@@ -310,7 +358,12 @@ void ReduceInput::addKeyValue(const string &key, const string &value){
 }
 
 vector<string> ReduceInput::getKeyValue(const string &key){
-	string fileName = this->tmpDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	string fileName;
+	if (this->tmpDir.empty()){
+		fileName = this->inputDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	}else{
+		fileName = this->tmpDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+	}
 	vector<string> listValue;
 	ifstream file(fileName.c_str());
 	if (file.is_open()){
@@ -320,7 +373,9 @@ vector<string> ReduceInput::getKeyValue(const string &key){
 		}
 	}
 	file.close();
-	remove(fileName.c_str());
+	if (tmpDir.empty()){
+		remove(fileName.c_str());
+	}
 	return listValue;
 }
 

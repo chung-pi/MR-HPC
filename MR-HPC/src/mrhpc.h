@@ -41,10 +41,11 @@ public:
 class ReduceInput{
 	vector<string> listKey;
 	int jobID;
+	string inputDir;
 	string tmpDir;
 
 public:
-	ReduceInput(int jobID, string tmpDir);
+	ReduceInput(int jobID, string inputDir, string tmpDir);
 	void addKeyValue(const string &key, const string &value);
 	vector<string> getKeyValue(const string &key);
 	virtual ~ReduceInput(){};
@@ -54,11 +55,12 @@ public:
 class Reducer{
 	int mNodeNumber;
 	string tmpDir;
+	string inputDir;
 
 public:
 	virtual ~Reducer(){};
 	virtual void Reduce(const string &key, vector<string> value) = 0;
-	void initialize(int, string);
+	void initialize(int mNodeNumber, string inputDir, string tmpDir);
 	void wait();
 
 	virtual void Emit(const string &value){};
@@ -71,7 +73,9 @@ class MR_JOB{
 	Mapper *map;
 	Reducer *reduce;
 	string inputFormat;
+	string inputDir;
 	string tmpDir;
+	bool copyData;
 public:
 	MR_JOB(int mNodeNumber, int rNodeNumber);
 	virtual ~MR_JOB(){};
@@ -80,9 +84,12 @@ public:
 	int initialize();
 	void startJob();
 	void setInputFormat(const string &format);
+	void setInputDir(const string &dir);
 	void readData();
 	void splitData();
 	void setTmpDir(const string &dir);
+	void setCopyDataToTmp(bool set);
+	void copyDataToTmp(vector<string> listFile);
 };
 
 class LIB{
