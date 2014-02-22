@@ -56,12 +56,6 @@ void Reducer::wait(){
 	for (int i=0; i < listKey.size(); i++){
 		this->Reduce(listKey[i], list.getKeyValue(listKey[i]));
 	}
-
-	/*
-	vector<string> listKey;
-	listKey.push_back("3");
-	this->Reduce("3", listKey);
-	*/
 }
 
 void Mapper::wait(){
@@ -119,7 +113,6 @@ int MR_JOB::initialize(){
 
 void MR_JOB::readData(){
 	vector<string> listFile = this->map->getListInput();
-	std::cout << "Size Before" << listFile.size() << "\n";
 	if (this->copyData){
 		copyDataToTmp(listFile);
 	}
@@ -148,11 +141,7 @@ void MR_JOB::splitData(){
 	int index = 0;
 
 	int get;
-	if (!this->copyData){
-		get = LIB::getDir(this->inputDir, listFile);
-	}else{
-		get = LIB::getDir(this->tmpDir, listFile);
-	}
+	get = LIB::getDir(this->inputDir, listFile);
 
 	if (get == 0){
 		for (int i=0; i < listFile.size(); i++){
@@ -219,9 +208,7 @@ void MR_JOB::setCopyDataToTmp(bool set){
 }
 
 void MR_JOB::copyDataToTmp(vector<string> listFile){
-	std::cout << "Size " << listFile.size() << "\n";
 	for (int i = 0; i < listFile.size(); i++) {
-		std::cout << "Copy " << this->inputDir + "/" + listFile[i] << "\n";
 		string input = this->inputDir + "/" + listFile[i];
 		string output = this->tmpDir + "/" + listFile[i];
 		ifstream ifs(input.c_str(), std::ios::binary);
@@ -229,8 +216,6 @@ void MR_JOB::copyDataToTmp(vector<string> listFile){
 		ofs << ifs.rdbuf();
 		ifs.close();
 		ofs.close();
-
-		std::cout << "Copy " << this->inputDir + "/" + listFile[i] << " OK\n";
 	}
 }
 
@@ -373,7 +358,7 @@ vector<string> ReduceInput::getKeyValue(const string &key){
 		}
 	}
 	file.close();
-	if (tmpDir.empty()){
+	if (this->tmpDir.empty()){
 		remove(fileName.c_str());
 	}
 	return listValue;

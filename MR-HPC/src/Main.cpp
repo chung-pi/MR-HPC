@@ -67,12 +67,14 @@ int main(int argc, char *argv[]) {
 	pr.setR_Task(reduce);
 
 	// Set input data: text file and put (filename, each line) --> Mapper input
-	pr.setInputDir(getenv("PJM_SCRATCHDIR"));
+	pr.setInputDir(".");
 	pr.setInputFormat("*.txt");
-	//pr.setCopyDataToTmp(true);
 
 	// Set temporary path
-	//pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+	pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+
+	// Set copy to temporary directory
+	pr.setCopyDataToTmp(true);
 
 	// Start job
 	pr.startJob();
