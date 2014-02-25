@@ -15,24 +15,18 @@
 class PR_MAP: public Mapper {
 public:
 	virtual void Map(const string &key, const string &value){
-		int edge = 0;
-		stringstream countEdge(value);
-		while (countEdge.good()){
-			string tmp;
-			countEdge >> tmp;
-			edge++;
-		}
 
-		if (edge > 1) {
-			stringstream emit(value);
-			int count = 0;
-			while (emit.good()) {
-				string tmp;
-				emit >> tmp;
-				if (count > 0 && count < (edge - 1)) {
-					Emit(tmp, LIB::convertInt(edge - 2));
-				}
-				count++;
+		vector<std::string> item = LIB::split(value, ',');
+		string comment = item[item.size() - 2];
+
+		// Remove redundant character
+		comment = comment.substr(11, comment.length() - 10);
+		comment = comment.substr(0, comment.length() - 1);
+
+		vector<std::string> words = LIB::split(comment, '\\');
+		for (int i=0; i < words.size(); i++){
+			if (words[i].length() > 0){
+				Emit(words[i], "1");
 			}
 		}
 	}
@@ -45,20 +39,16 @@ class PR_REDUCE: public Reducer{
 public:
 	virtual void Reduce(const string &key, vector<string> value){
 		cout << key << ": ";
-		float pr = 0;
-		for (int i=0; i < value.size(); i++){
-			pr += (float)1/atoi(value[i].c_str());
-		}
-		cout << pr << "\n";
+		cout << value.size() << "\n";
 	}
 };
 
-int test(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	// Run JOB on COMM_WORLD communicator
 	MPI::Init(argc, argv);
 
 	// Set number of mapper and reducer
-	MR_JOB pr (10, 10);
+	MR_JOB pr (1, 2);
 
 	// Set mapper and reducer functions
 	PR_MAP map;
@@ -68,13 +58,13 @@ int test(int argc, char *argv[]) {
 
 	// Set input data: text file and put (filename, each line) --> Mapper input
 	pr.setInputDir(".");
-	pr.setInputFormat("*.txt");
+	pr.setInputFormat("*.dat");
 
 	// Set temporary path
-	pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+	//pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
 
 	// Set copy to temporary directory
-	pr.setCopyDataToTmp(true);
+	//pr.setCopyDataToTmp(true);
 
 	// Start job
 	pr.startJob();
