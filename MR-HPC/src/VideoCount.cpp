@@ -17,16 +17,19 @@ public:
 	virtual void Map(const string &key, const string &value){
 
 		vector<std::string> item = LIB::split(value, ',');
-		string comment = item[item.size() - 2];
+		if (item.size() >= 2) {
+			string comment = item[item.size() - 2];
 
-		// Remove redundant character
-		comment = comment.substr(11, comment.length() - 10);
-		comment = comment.substr(0, comment.length() - 1);
+			// Remove redundant character
+			if (comment.length() > 12) {
+				comment = comment.substr(11, comment.length() - 12);
 
-		vector<std::string> words = LIB::split(comment, '\\');
-		for (int i=0; i < words.size(); i++){
-			if (words[i].length() > 0){
-				Emit(words[i], "1");
+				vector<std::string> words = LIB::split(comment, '\\');
+				for (int i = 0; i < words.size(); i++) {
+					if (words[i].length() > 0 && words[i][0] == 'u') {
+						Emit(words[i], "1");
+					}
+				}
 			}
 		}
 	}
@@ -48,7 +51,7 @@ int main(int argc, char *argv[]) {
 	MPI::Init(argc, argv);
 
 	// Set number of mapper and reducer
-	MR_JOB pr (1, 2);
+	MR_JOB pr (18, 18);
 
 	// Set mapper and reducer functions
 	PR_MAP map;
@@ -57,11 +60,12 @@ int main(int argc, char *argv[]) {
 	pr.setR_Task(reduce);
 
 	// Set input data: text file and put (filename, each line) --> Mapper input
-	pr.setInputDir(".");
+	pr.setInputDir("./test");
 	pr.setInputFormat("*.dat");
 
 	// Set temporary path
 	//pr.setTmpDir(getenv("PJM_SCRATCHDIR"));
+	pr.setTmpDir("./tmp");
 
 	// Set copy to temporary directory
 	//pr.setCopyDataToTmp(true);

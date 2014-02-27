@@ -44,18 +44,27 @@ void Reducer::wait(){
 			std::vector<std::string> split = LIB::split(data, TAG::SPLIT);
 
 			// Out of core buffer implementation here
-			list.addKeyValue(split[0], split[1]);
+			list.addKeyValueFileOpened(split[0], split[1]);
 		}
 		if (count == this->mNodeNumber){
 			break;
 		}
 	}
 
+	// Close file
+	list.closeFile();
+
 	// Forward (key, value) to Reducer
 	vector<string> listKey = list.getListKey();
 	for (int i=0; i < listKey.size(); i++){
 		this->Reduce(listKey[i], list.getKeyValue(listKey[i]));
 	}
+
+	/*
+	vector<string> listKey;
+	listKey.push_back("Ok");
+	this->Reduce("1", listKey);
+	*/
 }
 
 void Mapper::wait(){
@@ -321,6 +330,37 @@ ReduceInput::ReduceInput(int jobID, string inputDir, string tmpDir){
 	this->jobID = jobID;
 	this->inputDir = inputDir;
 	this->tmpDir = tmpDir;
+}
+
+void ReduceInput::closeFile(){
+	for (int i=0; i < this->listFile.size(); i++){
+		(*this->listFile[i]).close();
+	}
+}
+
+void ReduceInput::addKeyValueFileOpened(const string &key, const string &value){
+	int check = -1;
+	for (int i=0; i < this->listKey.size(); i++){
+		if (listKey[i].compare(key) == 0){
+			check = i;
+			break;
+		}
+	}
+
+	if (check != -1){
+		*this->listFile[check] << value << "\n";
+	}else{
+		this->listKey.push_back(key);
+		string fileName;
+		if (this->tmpDir.empty()){
+			fileName = this->inputDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+		}else{
+			fileName = this->tmpDir + "/" + LIB::convertInt(this->jobID) + TAG::SPLIT + key;
+		}
+
+		this->listFile.push_back(new ofstream(fileName.c_str()));
+		*this->listFile[this->listFile.size() - 1] << value << "\n";
+	}
 }
 
 void ReduceInput::addKeyValue(const string &key, const string &value){

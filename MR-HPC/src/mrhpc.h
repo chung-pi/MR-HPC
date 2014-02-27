@@ -40,6 +40,7 @@ public:
 
 class ReduceInput{
 	vector<string> listKey;
+	vector<ofstream*> listFile;
 	int jobID;
 	string inputDir;
 	string tmpDir;
@@ -47,6 +48,8 @@ class ReduceInput{
 public:
 	ReduceInput(int jobID, string inputDir, string tmpDir);
 	void addKeyValue(const string &key, const string &value);
+	void addKeyValueFileOpened(const string &key, const string &value);
+	void closeFile();
 	vector<string> getKeyValue(const string &key);
 	virtual ~ReduceInput(){};
 	vector<string> getListKey();
